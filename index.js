@@ -19,6 +19,7 @@ admin.initializeApp({
 
 
 // jwt middleware
+
 const verifyFBToken = async (req, res, next) => {
     const token = req.headers.authorization;
 
@@ -72,6 +73,13 @@ async function run() {
       res.send(result)
     })
 
+    // user role
+    app.get('/users/role/:email', async (req, res) => {
+      const { email } = req.params
+      const query = { email: email }
+      const result = await userCollections.findOne(query)
+      res.send(result)
+    })
 
 
 
