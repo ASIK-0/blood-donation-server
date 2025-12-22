@@ -80,6 +80,12 @@ async function run() {
       const result = await userCollections.findOne(query)
       res.send(result)
     })
+    
+    // all user info
+    app.get("/users", verifyFBToken, async (req, res) => {
+      const result = await userCollections.find().toArray();
+      res.status(200).send(result);
+    });
 
 
 
