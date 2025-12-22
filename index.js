@@ -14,29 +14,29 @@ const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8
 const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount)
 });
 
 
 // jwt middleware
 
 const verifyFBToken = async (req, res, next) => {
-    const token = req.headers.authorization;
+  const token = req.headers.authorization;
 
-    if (!token) {
-        return res.status(401).send({ message: 'unauthorized access' })
-    }
+  if (!token) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
 
-    try {
-        const idToken = token.split(' ')[1];
-        const decoded = await admin.auth().verifyIdToken(idToken);
-        console.log('decoded in the token', decoded);
-        req.decoded_email = decoded.email;
-        next();
-    }
-    catch (err) {
-        return res.status(401).send({ message: 'unauthorized access' })
-    }
+  try {
+    const idToken = token.split(' ')[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log('decoded in the token', decoded);
+    req.decoded_email = decoded.email;
+    next();
+  }
+  catch (err) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
 
 }
 
@@ -80,17 +80,26 @@ async function run() {
       const result = await userCollections.findOne(query)
       res.send(result)
     })
-    
+
     // all user info
     app.get("/users", verifyFBToken, async (req, res) => {
       const result = await userCollections.find().toArray();
       res.status(200).send(result);
     });
 
+    // donation request 
+    app.post("/requests", verifyFBToken, async (req, res) => {
+      const data = req.body;
+      data.createdAt = new Date();
+      const result = await requestsCollection.insertOne(data);
+      res.send(result);
+    });
 
 
 
- 
+
+
+
 
 
     // find
