@@ -95,13 +95,13 @@ async function run() {
       res.send(result);
     });
 
-        // my request
+    // my request
     app.get("/my-request", verifyFBToken, async (req, res) => {
 
       const email = req.decoded_email;
       const size = Number(req.query.size);
       const page = Number(req.query.page);
-      const query = { requester_email: email  };
+      const query = { requester_email: email };
 
       const result = await requestsCollection
         .find(query)
@@ -112,15 +112,16 @@ async function run() {
       res.send({ request: result, totalReqest });
     });
 
-
-
-
-
-
-
-
-
-    // find
+    // user block and active
+    app.patch("/update/user/status", verifyFBToken, async (req, res) => {
+      const { email, status } = req.query;
+      const query = { email: email };
+      const updateStatus = {
+        $set: { status: status },
+      };
+      const result = await userCollections.updateOne(query, updateStatus);
+      res.send(result);
+    });
 
 
 
