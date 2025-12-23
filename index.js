@@ -207,8 +207,23 @@ async function run() {
       }
     });
 
+    // admin dashboard 
+    app.get("/admin-stats", verifyFBToken, async (req, res) => {
+      const users = await userCollections.countDocuments();
+      const requests = await requestsCollection.countDocuments();
+      const funding = await paymentCollection.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]).toArray();
+      res.send({ users, requests, funding: funding[0]?.total || 0 });
+    });
 
-
+    // role set
+    app.patch("/update/user/role", verifyFBToken, async (req, res) => {
+      const { email, role } = req.query;
+      const result = await userCollections.updateOne(
+        { email },
+        { $set: { role } }
+      );
+      res.send(result);
+    });
 
 
     // payment
