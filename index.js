@@ -192,6 +192,20 @@ async function run() {
       }
     });
 
+    // Delete
+    app.delete("/requests/:id", verifyFBToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await requestsCollection.deleteOne({
+          _id: new ObjectId(id),
+          requester_email: req.decoded_email
+        });
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
 
 
