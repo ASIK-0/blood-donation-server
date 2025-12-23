@@ -199,12 +199,21 @@ async function run() {
 
     // edit donation request 
     app.patch("/requests/:id", verifyFBToken, async (req, res) => {
+      const email = req.decoded_email;
+      const user = await userCollections.findOne({ email });
+      let query = { _id: new ObjectId(req.params.id) };
+
+      if (user?.role !== "admin") {
+        query.requester_email = email;
+      }
+
       const result = await requestsCollection.updateOne(
-        { _id: new ObjectId(req.params.id), requester_email: req.decoded_email },
+        query,
         { $set: req.body }
       );
       res.send(result);
     });
+
 
     // user block and active
     app.patch("/update/user/status", verifyFBToken, async (req, res) => {
@@ -361,7 +370,11 @@ async function run() {
         return res.send(result)
       }
     })
-
+    // funding history 
+    app.get("/payments/history", async (req, res) => {
+      const result = await paymentCollection.find().sort({ paidAt: -1 }).toArray();
+      res.send(result);
+    });
 
     // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
