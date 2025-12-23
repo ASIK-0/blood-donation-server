@@ -165,6 +165,32 @@ async function run() {
       }
     });
 
+    // donations status update 
+    app.patch("/requests/:id/donate", verifyFBToken, async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { donorName, donorEmail } = req.body;
+
+        const result = await requestsCollection.updateOne(
+          {
+            _id: new ObjectId(id),
+            donation_status: "pending"
+          },
+          {
+            $set: {
+              donation_status: "inprogress",
+              donorName,
+              donorEmail,
+              donatedAt: new Date()
+            }
+          }
+        );
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
 
 
