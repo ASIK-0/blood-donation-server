@@ -89,6 +89,21 @@ async function run() {
       res.status(200).send(result);
     });
 
+    // search user
+
+    app.get("/users/search", async (req, res) => {
+      const { blood, district, upazila } = req.query;
+      const query = { role: "donor", status: "active" };
+
+      if (blood) query.blood = blood;
+      if (district) query.district = district;
+      if (upazila) query.upazila = upazila;
+
+      const result = await userCollections.find(query).toArray();
+      
+      res.send(result);
+    });
+
     // donation request 
     app.post("/requests", verifyFBToken, async (req, res) => {
       const data = req.body;
@@ -108,16 +123,6 @@ async function run() {
       if (status && status !== "all") {
         query.donation_status = status;
       }
-
-      // edit donation request 
-      app.patch("/requests/:id", verifyFBToken, async (req, res) => {
-        const result = await requestsCollection.updateOne(
-          { _id: new ObjectId(req.params.id), requester_email: req.decoded_email },
-          { $set: req.body }
-        );
-        res.send(result);
-      });
-
       const result = await requestsCollection
         .find(query)
         .skip(page * size)
@@ -128,6 +133,62 @@ async function run() {
       const totalReqest = await requestsCollection.countDocuments(query);
 
       res.send({ request: result, totalReqest });
+    });
+
+
+    // 1. All requests with filter + pagination (Admin + Volunteer)
+    app.get("/requests/all", verifyFBToken, async (req, res) => {
+      const status = req.query.status || "all";
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 10;
+
+      const query = status !== "all" ? { donation_status: status } : {};
+
+      try {
+        const requests = await requestsCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .toArray();
+
+        const total = await requestsCollection.countDocuments(query);
+
+        res.send({ requests, total });
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // 2. Update status (Admin + Volunteer)
+    app.patch("/requests/:id/status", verifyFBToken, async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!["pending", "inprogress", "done", "canceled"].includes(status)) {
+        return res.status(400).send({ message: "Invalid status" });
+      }
+
+      try {
+        const result = await requestsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { donation_status: status } }
+        );
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // edit donation request 
+    app.patch("/requests/:id", verifyFBToken, async (req, res) => {
+      const result = await requestsCollection.updateOne(
+        { _id: new ObjectId(req.params.id), requester_email: req.decoded_email },
+        { $set: req.body }
+      );
+      res.send(result);
     });
 
     // user block and active
@@ -224,7 +285,6 @@ async function run() {
       );
       res.send(result);
     });
-
 
     // payment
 
