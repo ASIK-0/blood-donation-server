@@ -89,6 +89,21 @@ async function run() {
       res.status(200).send(result);
     });
 
+    // Profile 
+    app.get("/users/profile/:email", async (req, res) => {
+      const result = await userCollections.findOne({ email: req.params.email });
+      res.send(result || {});
+    });
+
+    // Profile update
+    app.patch("/users/profile/:email", verifyFBToken, async (req, res) => {
+      const result = await userCollections.updateOne(
+        { email: req.params.email },
+        { $set: req.body }
+      );
+      res.send(result);
+    });
+
     // search user
 
     app.get("/users/search", async (req, res) => {
@@ -100,7 +115,7 @@ async function run() {
       if (upazila) query.upazila = upazila;
 
       const result = await userCollections.find(query).toArray();
-      
+
       res.send(result);
     });
 
@@ -136,7 +151,7 @@ async function run() {
     });
 
 
-    // 1. All requests with filter + pagination (Admin + Volunteer)
+    // All requests with filter + pagination funsonality
     app.get("/requests/all", verifyFBToken, async (req, res) => {
       const status = req.query.status || "all";
       const page = Number(req.query.page) || 1;
