@@ -1,9 +1,11 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
+const stripe = require('stripe')(process.env.STRIPE_SECRATE);
+const crypto = require('crypto')
 
 app.use(cors());
 app.use(express.json());
@@ -54,7 +56,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
 
     // database & collection
@@ -97,18 +99,34 @@ async function run() {
 
     // my request
     app.get("/my-request", verifyFBToken, async (req, res) => {
-
       const email = req.decoded_email;
-      const size = Number(req.query.size);
-      const page = Number(req.query.page);
+      const size = Number(req.query.size) || 10;
+      const page = Number(req.query.page) || 0;
+      const status = req.query.status;
+
       const query = { requester_email: email };
+      if (status && status !== "all") {
+        query.donation_status = status;
+      }
+
+      // edit donation request 
+      app.patch("/requests/:id", verifyFBToken, async (req, res) => {
+        const result = await requestsCollection.updateOne(
+          { _id: new ObjectId(req.params.id), requester_email: req.decoded_email },
+          { $set: req.body }
+        );
+        res.send(result);
+      });
 
       const result = await requestsCollection
         .find(query)
+        .skip(page * size)
         .limit(size)
-        .skip(size * page)
+        .sort({ createdAt: -1 })
         .toArray();
+
       const totalReqest = await requestsCollection.countDocuments(query);
+
       res.send({ request: result, totalReqest });
     });
 
@@ -123,9 +141,41 @@ async function run() {
       res.send(result);
     });
 
+    // public blood donation page
+    app.get("/requests/pending", async (req, res) => {
+      const result = await requestsCollection
+        .find({ donation_status: "pending" })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    // request details page 
+    app.get("/requests/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const result = await requestsCollection.findOne({ _id: new ObjectId(id) });
+        if (!result) {
+          return res.status(404).send({ message: "Request not found" });
+        }
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching request:", error);
+        res.status(500).send({ message: "Invalid ID or server error" });
+      }
+    });
 
 
-    await client.db("admin").command({ ping: 1 });
+
+
+
+
+
+    // payment
+
+
+
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
